@@ -29,11 +29,31 @@ jobs:
           sed -i 's/<activity /<activity android:screenOrientation="sensorLandscape" /' android/app/src/main/AndroidManifest.xml
           sed -i '/<style name="AppTheme.NoActionBar"/a \        <item name="android:windowFullscreen">true</item>' android/app/src/main/res/values/styles.xml
           npx cap sync android
-      - name: Build debug APK
+      - name: Maven mirror (against 429 from Maven Central)
+        run: |
+          mkdir -p ~/.gradle/init.d
+          cat > ~/.gradle/init.d/mirror.gradle <<'EOF'
+          allprojects {
+            buildscript {
+              repositories {
+                maven { url "https://maven-central.storage-download.googleapis.com/maven2/" }
+              }
+            }
+            repositories {
+              maven { url "https://maven-central.storage-download.googleapis.com/maven2/" }
+            }
+          }
+          EOF
+      - name: Build debug APK (3 attempts)
         run: |
           cd emberhold/android
           chmod +x gradlew
-          ./gradlew assembleDebug
+          for i in 1 2 3; do
+            ./gradlew assembleDebug --no-daemon && exit 0
+            echo "Attempt $i failed, retrying in 40s"
+            sleep 40
+          done
+          exit 1
       - uses: actions/upload-artifact@v4
         with:
           name: app-debug.apk
