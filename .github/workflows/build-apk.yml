@@ -17,11 +17,20 @@ jobs:
         with:
           distribution: temurin
           java-version: 17
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Python deps for asset generator
+        run: pip install numpy pillow
       - name: Install deps and local Three.js r128
         run: |
           cd emberhold
           npm install
           cp node_modules/three/build/three.min.js www/three.min.js
+      - name: Generate assets (sounds, music, textures)
+        run: |
+          cd emberhold
+          python tools/gen_assets.py
       - name: Add Android project (landscape both sides, fullscreen)
         run: |
           cd emberhold
@@ -32,7 +41,7 @@ jobs:
       - name: Maven mirror (against 429 from Maven Central)
         run: |
           mkdir -p ~/.gradle/init.d
-          cat > ~/.gradle/init.d/mirror.gradle <<'EOF'
+          cat > ~/.gradle/init.d/mirror.gradle <<'EOT'
           allprojects {
             buildscript {
               repositories {
@@ -43,7 +52,7 @@ jobs:
               maven { url "https://maven-central.storage-download.googleapis.com/maven2/" }
             }
           }
-          EOF
+          EOT
       - name: Build debug APK (3 attempts)
         run: |
           cd emberhold/android
